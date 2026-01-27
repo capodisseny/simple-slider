@@ -1,0 +1,51 @@
+.s-slider-wrapper.animate{
+    transition:var(--animationTime);
+} 
+.s-slider{
+  
+  position:relative;
+      overflow: hidden;
+  
+}
+.s-slider-nav{
+  
+  
+  position:absolute;
+	top:0;left:0;
+	font-size:40px;
+	cursor:pointer;
+  width:100%;
+ height: 100%;
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    pointer-events:none;
+}
+.s-slider-wrapper{
+
+  display:flex;
+  flex-direction:row;
+  flex-wrap:nowrap;
+  
+  width:auto;
+
+  
+  
+}
+.s-slide{
+  max-width:100vw;
+  width:100%;
+}
+
+.s-slider-nav > div {
+ 
+        width: auto;
+    padding: 10px;
+    	cursor:pointer;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+    pointer-events:all;
+}
