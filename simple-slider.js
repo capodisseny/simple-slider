@@ -29,6 +29,13 @@ function getChildrenSize(children){
 }
 
 
+
+function createFragment(nodes){
+    const frag =  document.createDocumentFragment();
+       nodes.forEach(n=>  frag.appendChild(n))
+    
+    return frag
+}
 function createCloneFragment(slides){
       const cloned =  document.createDocumentFragment();
        slides.forEach(c=>{
@@ -64,10 +71,22 @@ sliders.forEach(slider=>{
     
 
     //move first as alreade have been moveed
-    const lastRef = slides.at(-1).nextSibling || null // just after the last slide or at the end
+    let lastRef = slides.at(-1).nextSibling || null // just after the last slide or at the end
     const beginClones = createCloneFragment(slides.slice(0, activeIndex))
     
-     
+    //append animation helpers
+        const animationHelperLeft = document.createElement("div")
+       animationHelperLeft.classList.add("a-helper")
+        const animationHelperRight = animationHelperLeft.cloneNode()
+         animationHelperLeft.classList.add("start")
+        animationHelperRight.classList.add("end")
+        
+            wrapper.insertBefore(animationHelperLeft , slides[0])
+                  wrapper.insertBefore(animationHelperRight ,lastRef )
+                  
+        lastRef = animationHelperRight
+         
+    
     const lastClones = slides.slice( activeIndex)
     const lastClonesFrag = createCloneFragment(lastClones)
 
@@ -75,8 +94,10 @@ sliders.forEach(slider=>{
  
       wrapper.insertBefore(beginClones ,lastRef )
 
+    
 	
-        
+
+    
       
 
   	function resetSize(){
@@ -111,7 +132,6 @@ sliders.forEach(slider=>{
                         await new Promise(resolve=>{
                              resetSize()
                             setTimeout(()=>{
-                                console.log("ressing", active.offsetLef)
                                 resetSize()
                                 resolve()
                             }, 500)
@@ -180,8 +200,15 @@ sliders.forEach(slider=>{
   }
 
 
-  function go(elOrIndex ){
- 			const {active, prev, next, children, currentIndex, wrapper, } = getState()
+// let lastMove = false
+  async function  go(elOrIndex ){
+      
+    //  if(lastMove)  await lastMove
+      
+ 	   // lastMove = new Promise(r=> setTimeout(()=>r(), animationTime))
+ 	    
+ 	    
+ 	const {active, prev, next, children, currentIndex, wrapper, } = getState()
 
      if(!elOrIndex && elOrIndex !== 0) elOrIndex = calcIndex(1) // nothing go foward
     
@@ -218,20 +245,110 @@ sliders.forEach(slider=>{
         //from the begging or from the end depends on the direction
         //forward [moveElements , ....]
         //else [ ...., moveElements]
-        const moveElements = forward ? children.slice(0, diff) : children.slice(diff) ;
-
-       
-
+        
+        const animationElements = children.slice( Math.min(currentIndex, index), Math.max(currentIndex, index))
+        const animationWidth = animationElements.reduce((w,n)=> w+n.clientWidth, 0)
+        
+        const moveChildren =  forward ?  children : [...children].reverse()
+        
+        let moveWidth = 0
+        //const moveElements = forward ? children.slice(0, diff) : children.slice(diff) ;
+        //get elements what are inside the width of the animation elements
+        const moveElements = []
+        
+        for(let v of moveChildren){
+            
+              const keep = animationWidth > moveWidth
+            //add if are not exactly equal, this would be the offset
+            if(animationWidth != moveWidth ) moveWidth = moveWidth + v.clientWidth 
+            
   
-        const moveSize = moveElements.reduce((w,n)=> w+n.clientWidth, 0)
+            
+            if(!keep) break;
+            
+            moveElements.push(v)
+         
+        }
+        
+        
+    
+
+        const moveElementsSize = moveElements.reduce((w,n)=> w+n.clientWidth, 0)
+        
         const sliderWidth = slider.getBoundingClientRect().width
         const finalMargin = left > sliderWidth ? sliderWidth : left
         //wrapper.style.marginLeft ="-"+ String(total + moveSize) + "px" 
         
-        wrapper.style.transform = `translateX(${forward?"-":""}${moveSize}px)`
+       // wrapper.style.transform = `translateX(${forward?"-":""}${moveSize}px)`
         wrapper.classList.add("animate")
+        
+   
        
+              const helper = document.querySelector(".a-helper.start")
+       
+       const offset = moveElementsSize - animationWidth 
+   
+  
+        const currentOffset = Number(helper.style.getPropertyValue("--offset" ) || 0)
+        
+        const newOffset = currentOffset - offset
+        
+        helper.style.setProperty("--offset" , newOffset) 
+        
+        
+        const animationBlock = document.createElement("div")
+        animationBlock.classList.add("a-block")
+        animationBlock.style.setProperty("--size",`${moveWidth}px` )
+        animationBlock.style.setProperty("--size",`${moveWidth}px` )
+         animationBlock.style.setProperty("--direction",`${forward?"-1":"1"}` )
+       
+        
+         animationBlock.style.setProperty("--duration", `${animationTime}ms`)
+      
+        
+         helper.append(animationBlock )
+        
+           const ref = moveChildren.at(-1).nextSibling 
+         
+       if(forward){
+           
+           
+            animationBlock.style.setProperty("--from",`${moveWidth}px` )
+            animationBlock.style.setProperty("--to",`0px` )
+           
+           //replace
+             const ref = slider.querySelector(".a-helper.end") 
+             wrapper.insertBefore(createFragment(moveElements), ref || null)
+             
+        }else{
+            
+              animationBlock.style.setProperty("--from",`0px` )
+            animationBlock.style.setProperty("--to",`${moveWidth}px` )
+        
+            //replace after
+
+        }
+        
+        
+      
         setTimeout(()=>{
+            
+            
+             animationBlock.remove()
+            
+            
+             if(forward){
+               //replace before
+            }
+            else{
+          
+                  const ref = slider.querySelector(".a-helper.start") 
+                //create the fragment here, since removes from the dom when inserted into the fragment
+              wrapper.insertBefore(createFragment(moveElements), ref.nextSibling )
+            }
+            
+            return 
+ 
           // wrapper.style.marginLeft = "0px"
           
              wrapper.classList.remove("animate")
@@ -240,11 +357,14 @@ sliders.forEach(slider=>{
         
                 moveElements.forEach(el=>fragment.appendChild(el))
           
-            if(forward){
+            
+             if(forward){
                wrapper.insertBefore(fragment, null )
             }else{
               wrapper.insertBefore(fragment, children[0])
             }
+            
+           
             wrapper.style.transform = "translateX(0)"
           
         }, animationTime)
@@ -327,7 +447,6 @@ sliders.forEach(slider=>{
       } 
       SalSlider.instances.push(sliderObj)
       
-      console.log(sliderObj)
   
   
   
